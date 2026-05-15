@@ -1,0 +1,359 @@
+/*
+ * 玻璃拟态增强设计系统
+ * Glassmorphism & Advanced Visual Effects for SeekAI
+ * 基于 apple-design.css 的增强版本
+ */
+
+/* ==================== 增强的 CSS 变量 ==================== */
+:root {
+  /* 玻璃拟态颜色 */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-bg-hover: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-hover: rgba(0, 0, 0, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+  /* 渐变背景色 */
+  --gradient-mesh-1: #f0f4ff;
+  --gradient-mesh-2: #e8f0fe;
+  --gradient-mesh-3: #dbeafe;
+  --gradient-accent: #e94560;
+
+  /* 柔和发光色 */
+  --glow-blue: rgba(10, 132, 255, 0.4);
+  --glow-purple: rgba(191, 90, 242, 0.3);
+  --glow-pink: rgba(255, 55, 95, 0.3);
+
+  /* 弹性过渡 */
+  --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+/* ==================== 网格渐变背景 ==================== */
+.mesh-gradient-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, var(--glow-purple), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 20%, var(--glow-blue), transparent),
+    radial-gradient(ellipse 50% 30% at 60% 80%, var(--glow-pink), transparent),
+    linear-gradient(180deg, var(--gradient-mesh-1) 0%, var(--gradient-mesh-2) 50%, var(--gradient-mesh-3) 100%);
+  background-attachment: fixed;
+}
+
+/* 动态网格背景动画 */
+.mesh-gradient-bg::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(10, 132, 255, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 70% 70%, rgba(191, 90, 242, 0.1) 0%, transparent 40%);
+  animation: meshFloat 20s ease-in-out infinite;
+}
+
+@keyframes meshFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, 2%) rotate(1deg); }
+  66% { transform: translate(-1%, 1%) rotate(-1deg); }
+}
+
+/* ==================== 玻璃拟态卡片 ==================== */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
+  transition: all 0.4s var(--ease-smooth);
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-4px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.1),
+    0 0 60px rgba(10, 132, 255, 0.05);
+}
+
+/* ==================== 便当格布局 (Bento Grid) ==================== */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+}
+
+.bento-item {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  transition: all 0.5s var(--ease-out-expo);
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-border-hover), transparent);
+}
+
+.bento-item:hover {
+  transform: scale(1.02);
+  border-color: var(--glass-border-hover);
+  box-shadow:
+    0 0 0 1px var(--glass-border-hover),
+    0 20px 50px rgba(0, 0, 0, 0.08);
+}
+
+/* 便当格大小变体 */
+.bento-large { grid-column: span 2; }
+.bento-tall { grid-row: span 2; }
+.bento-wide { grid-column: span 2; }
+
+@media (max-width: 768px) {
+  .bento-large, .bento-tall, .bento-wide {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+}
+
+/* ==================== 微交互效果 ==================== */
+
+/* 磁吸光标效果 */
+.magnetic {
+  transition: transform 0.3s var(--ease-elastic);
+}
+
+/* 发光悬停效果 */
+.glow-hover {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow-hover::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, var(--glow-blue) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s var(--ease-out-expo), height 0.6s var(--ease-out-expo);
+  opacity: 0;
+}
+
+.glow-hover:hover::after {
+  width: 300%;
+  height: 300%;
+  opacity: 0.15;
+}
+
+/* 按钮微交互 */
+.btn-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  padding: var(--space-md) var(--space-xl);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-glass::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
+  transition: left 0.5s var(--ease-smooth);
+}
+
+.btn-glass:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.btn-glass:hover::before {
+  left: 100%;
+}
+
+.btn-glass:active {
+  transform: scale(0.97);
+}
+
+/* ==================== 流畅动画 ==================== */
+
+/* 淡入上移动画 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s var(--ease-out-expo) forwards;
+}
+
+/* 交错淡入 */
+.stagger-animation > * {
+  opacity: 0;
+  animation: fadeInUp 0.6s var(--ease-out-expo) forwards;
+}
+
+.stagger-animation > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-animation > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-animation > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-animation > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-animation > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-animation > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* 脉冲发光 */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--glow-blue);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--glow-blue), 0 0 60px var(--glow-purple);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* 浮动效果 */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ==================== 高级输入框 ==================== */
+.input-glass {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  outline: none;
+  transition: all 0.3s var(--ease-smooth);
+}
+
+.input-glass:focus {
+  background: var(--glass-bg-hover);
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 3px rgba(10, 132, 255, 0.15),
+    0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.input-glass::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* ==================== 文字效果 ==================== */
+
+/* 发光文字 */
+.text-glow {
+  text-shadow: 0 0 20px var(--glow-blue), 0 0 40px var(--glow-blue);
+}
+
+/* 渐变文字 */
+.text-gradient {
+  background: linear-gradient(135deg, #1d1d1f 0%, #4a6cf7 50%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==================== 边框光效 ==================== */
+.border-glow {
+  position: relative;
+}
+
+.border-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-purple));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-smooth);
+}
+
+.border-glow:hover::before {
+  opacity: 1;
+}
+
+/* ==================== 遮罩层 ==================== */
+.overlay-glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ==================== 滚动动画触发 ==================== */
+.scroll-animate {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.8s var(--ease-out-expo);
+}
+
+.scroll-animate.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 视差层 (需要 JS 配合) */
+.parallax-layer {
+  will-change: transform;
+  transition: transform 0.1s linear;
+}

@@ -1,0 +1,57 @@
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/springai_db
+    username: root
+    password: 123456
+  vector-datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://8.134.23.170:5432/seekai_vector_db
+    username: root
+    password: ohkbns.gq233h.fo12sww3.jlpzwbprl
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  # 配置 PostgreSQL 作为 pgvector 的数据源
+  ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: never
+    openai:
+      base-url: http://localhost:11434
+#      base-url: https://api.siliconflow.cn/
+      api-key: sk-ohkbngheylpvfolsoywwjlpzwbprltekqmqmuwqifdqkxvfu
+      chat:
+        options:
+          model: qwen2.5-coder:7b
+#          model: Pro/moonshotai/Kimi-K2.5
+          temperature: 0.7
+      embedding:
+        options:
+          model: nomic-embed-text
+      image:
+        enabled: true
+        options:
+          model: Kwai-Kolors/Kolors
+          quality: hd
+          n: 1
+          size: 1024x1024
+      audio:
+        speech:
+          enabled: true
+          options:
+            response-format: mp3
+            model: Wan-AI/Wan2.1-I2V-14B-720P-Turbo
+            speed: 1.0
+
+# MyBatis 配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.njhtr.seekai.dto
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.njhtr.seekai.memory.UserMemoryRepository">
+
+    <!-- ========== UserMemory ========== -->
+    <insert id="saveMemory" parameterType="com.njhtr.seekai.memory.UserMemory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_memory (user_id, memory_type, content, embedding, importance, access_count, last_accessed, created_at, updated_at)
+        VALUES (#{userId}, #{memoryType}, #{content}, #{embedding}, #{importance}, #{accessCount}, #{lastAccessed}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="findByUserId" resultType="com.njhtr.seekai.memory.UserMemory">
+        SELECT * FROM user_memory
+        WHERE user_id = #{userId}
+        ORDER BY importance DESC, updated_at DESC
+    </select>
+
+    <select id="findByUserIdAndType" resultType="com.njhtr.seekai.memory.UserMemory">
+        SELECT * FROM user_memory
+        WHERE user_id = #{userId} AND memory_type = #{memoryType}
+        ORDER BY importance DESC, updated_at DESC
+    </select>
+
+    <delete id="deleteMemory">
+        DELETE FROM user_memory WHERE id = #{id}
+    </delete>
+
+    <update id="updateMemory" parameterType="com.njhtr.seekai.memory.UserMemory">
+        UPDATE user_memory
+        SET content = #{content},
+            embedding = #{embedding},
+            importance = #{importance},
+            access_count = #{accessCount},
+            last_accessed = #{lastAccessed},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <!-- ========== UserPreference ========== -->
+    <insert id="savePreference" parameterType="com.njhtr.seekai.memory.UserPreference" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_preference (user_id, preference_key, preference_value, confidence, sample_count, created_at, updated_at)
+        VALUES (#{userId}, #{preferenceKey}, #{preferenceValue}, #{confidence}, #{sampleCount}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="findPreferencesByUserId" resultType="com.njhtr.seekai.memory.UserPreference">
+        SELECT * FROM user_preference
+        WHERE user_id = #{userId}
+        ORDER BY confidence DESC
+    </select>
+
+    <select id="findPreference" resultType="com.njhtr.seekai.memory.UserPreference">
+        SELECT * FROM user_preference
+        WHERE user_id = #{userId} AND preference_key = #{preferenceKey}
+        LIMIT 1
+    </select>
+
+    <update id="updatePreference" parameterType="com.njhtr.seekai.memory.UserPreference">
+        UPDATE user_preference
+        SET preference_value = #{preferenceValue},
+            confidence = #{confidence},
+            sample_count = #{sampleCount},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <!-- ========== UserHabit ========== -->
+    <insert id="saveHabit" parameterType="com.njhtr.seekai.memory.UserHabit" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_habit (user_id, habit_type, habit_key, habit_value, frequency, last_context, last_used_at, created_at, updated_at)
+        VALUES (#{userId}, #{habitType}, #{habitKey}, #{habitValue}, #{frequency}, #{lastContext}, #{lastUsedAt}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="findHabitsByUserId" resultType="com.njhtr.seekai.memory.UserHabit">
+        SELECT * FROM user_habit
+        WHERE user_id = #{userId}
+        ORDER BY frequency DESC
+    </select>
+
+    <select id="findHabit" resultType="com.njhtr.seekai.memory.UserHabit">
+        SELECT * FROM user_habit
+        WHERE user_id = #{userId} AND habit_type = #{habitType} AND habit_key = #{habitKey}
+        LIMIT 1
+    </select>
+
+    <update id="incrementHabitFrequency">
+        UPDATE user_habit
+        SET frequency = frequency + 1,
+            last_used_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateHabit" parameterType="com.njhtr.seekai.memory.UserHabit">
+        UPDATE user_habit
+        SET habit_value = #{habitValue},
+            frequency = #{frequency},
+            last_context = #{lastContext},
+            last_used_at = #{lastUsedAt},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findFrequentHabits" resultType="com.njhtr.seekai.memory.UserHabit">
+        SELECT * FROM user_habit
+        WHERE user_id = #{userId}
+        ORDER BY frequency DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
