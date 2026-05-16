@@ -35,6 +35,9 @@ build/
 ### JAR ###
 spring-ai-core-1.0.0.jar
 
+### Maven local repo in workspace ###
+.mvn/repository/
+
 ### Node ###
 node_modules/
 

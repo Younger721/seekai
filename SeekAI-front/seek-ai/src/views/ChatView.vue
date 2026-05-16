@@ -1,77 +1,87 @@
-<template>
-  <div class="main-layout">
-    <!-- Apple 风格侧边栏 -->
-    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
-      <div class="sidebar-header">
-        <div class="logo" @click="toggleSidebar">
-          <div class="logo-icon">
-            <svg viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-              <path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <span class="logo-text">SeekAI</span>
+﻿<template>
+  <div class="neo-page">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <aside class="sidebar" :class="{ 'mobile-open': mobileSidebarOpen }">
+      <div class="brand-block">
+        <div class="brand-mark">S</div>
+        <div>
+          <h2>SeekAI</h2>
+          <p>多智能体协同平台</p>
         </div>
       </div>
 
-      <!-- 导航菜单 -->
-      <nav class="sidebar-nav">
-        <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>对话</span>
-        </router-link>
+      <button class="new-chat-btn" @click="createNewChat">
+        <span class="plus">+</span>
+        新建会话
+      </button>
 
-        <router-link to="/skills" class="nav-item" :class="{ active: $route.path === '/skills' }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          <span>技能</span>
-        </router-link>
+      <p class="agent-tip">输入 <span>@</span> 可快速唤起指定 Agent</p>
 
-        <router-link to="/memory" class="nav-item" :class="{ active: $route.path === '/memory' }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12"/>
-            <path d="M12 6v6l4 2"/>
-          </svg>
-          <span>记忆</span>
+      <nav class="nav-list">
+        <router-link
+          to="/"
+          class="nav-item"
+          :class="{ active: route.path === '/' }"
+          @click="closeMobileSidebar"
+        >
+          <span class="dot"></span>
+          对话
         </router-link>
-
-        <router-link to="/browser" class="nav-item" :class="{ active: $route.path === '/browser' }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          <span>浏览器</span>
+        <router-link
+          to="/skills"
+          class="nav-item"
+          :class="{ active: route.path === '/skills' }"
+          @click="closeMobileSidebar"
+        >
+          <span class="dot"></span>
+          技能
         </router-link>
-
-        <router-link to="/tools" class="nav-item" :class="{ active: $route.path === '/tools' }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-          </svg>
-          <span>工具</span>
+        <router-link
+          to="/memory"
+          class="nav-item"
+          :class="{ active: route.path === '/memory' }"
+          @click="closeMobileSidebar"
+        >
+          <span class="dot"></span>
+          记忆
         </router-link>
-
-        <router-link to="/security" class="nav-item" :class="{ active: $route.path === '/security' }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          <span>安全</span>
+        <router-link
+          to="/browser"
+          class="nav-item"
+          :class="{ active: route.path === '/browser' }"
+          @click="closeMobileSidebar"
+        >
+          <span class="dot"></span>
+          浏览器
+        </router-link>
+        <router-link
+          to="/tools"
+          class="nav-item"
+          :class="{ active: route.path === '/tools' }"
+          @click="closeMobileSidebar"
+        >
+          <span class="dot"></span>
+          工具
+        </router-link>
+        <router-link
+          to="/security"
+          class="nav-item"
+          :class="{ active: route.path === '/security' }"
+          @click="closeMobileSidebar"
+        >
+          <span class="dot"></span>
+          安全
         </router-link>
       </nav>
 
-      <!-- 对话列表 -->
-      <div class="conversation-section">
-        <div class="conversation-header">
-          <button class="new-chat-btn" @click="createNewChat">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-            新建对话
-          </button>
+      <section class="history-panel">
+        <div class="history-header">
+          <span>最近会话</span>
+          <em>{{ conversations.length }}</em>
         </div>
+
         <div class="conversation-list">
           <div
             v-for="item in conversations"
@@ -79,78 +89,63 @@
             :class="['conversation-item', { active: currentConversationId === item.id }]"
             @click="selectConversation(item.id)"
           >
-            <div class="item-content">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-              <span class="title">{{ item.title || '新对话' }}</span>
-            </div>
-            <button class="delete-btn" @click="deleteChat(item.id, $event)">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6L6 18M6 6l12 12"/>
-              </svg>
-            </button>
+            <span class="conversation-title">{{ item.title || '新对话' }}</span>
+            <button class="delete-btn" @click="deleteChat(item.id, $event)">删除</button>
           </div>
           <div v-if="conversations.length === 0" class="empty-conversations">
-            暂无对话，点击上方按钮新建
+            还没有会话，点击上方按钮创建
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 底部用户区 -->
-      <div class="sidebar-footer">
-        <div class="user-info">
-          <div class="user-avatar">
-            {{ userName.charAt(0).toUpperCase() }}
-          </div>
-          <div class="user-details">
-            <span class="user-name">{{ userName }}</span>
-            <span class="user-status">
-              <span class="status-dot"></span>
-              在线
-            </span>
-          </div>
+      <div class="user-card">
+        <div class="avatar">{{ userName.charAt(0).toUpperCase() }}</div>
+        <div>
+          <div class="user-name">{{ userName }}</div>
+          <div class="user-status">在线</div>
         </div>
       </div>
     </aside>
 
-    <!-- 主内容区 -->
-    <main class="main-content">
-      <ChatWindow />
-    </main>
+    <div class="workspace">
+      <section class="chat-shell">
+        <ChatWindow />
+      </section>
+    </div>
+
+    <div v-if="mobileSidebarOpen" class="mobile-mask" @click="closeMobileSidebar"></div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useChatStore } from '../stores/chat'
 import ChatWindow from '../components/ChatWindow.vue'
 
-const router = useRouter()
+const route = useRoute()
 const chatStore = useChatStore()
 
-const sidebarCollapsed = ref(false)
+const mobileSidebarOpen = ref(false)
 const userName = ref('用户')
 
 const conversations = computed(() => chatStore.conversations)
 const currentConversationId = computed(() => chatStore.currentConversationId)
 
-const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
+const closeMobileSidebar = () => {
+  mobileSidebarOpen.value = false
 }
 
-// 新建对话
 const createNewChat = () => {
   chatStore.createConversation()
+  closeMobileSidebar()
 }
 
-// 选择对话
 const selectConversation = (id) => {
   chatStore.fetchConversationDetail(id)
+  closeMobileSidebar()
 }
 
-// 删除对话
 const deleteChat = (id, event) => {
   event.stopPropagation()
   chatStore.deleteConversation(id)
@@ -163,359 +158,236 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.main-layout {
-  display: flex;
+.neo-page {
+  --brand-blue: #111111;
+  --brand-cyan: #3f3f46;
+  --brand-ink: #1c1917;
+  --brand-text: #44403c;
+  --brand-border: #dedad3;
+  --brand-soft: #ece8e2;
+  --brand-white: #ffffff;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 308px 1fr;
   height: 100vh;
-  width: 100vw;
-  position: relative;
-}
-
-/* 玻璃拟态侧边栏 */
-.sidebar {
-  width: var(--sidebar-width);
-  height: 100%;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 10;
-}
-
-.sidebar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 100%);
-  pointer-events: none;
-}
-
-.sidebar.collapsed {
-  width: 72px;
-}
-
-.sidebar-header {
-  padding: var(--space-lg);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  position: relative;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  cursor: pointer;
-}
-
-.logo-icon {
-  width: 28px;
-  height: 28px;
-  color: var(--color-accent);
-}
-
-.logo-icon svg {
   width: 100%;
-  height: 100%;
+  overflow: hidden;
+  font-family: 'HarmonyOS Sans SC', 'MiSans', 'Source Han Sans SC', 'PingFang SC', sans-serif;
+  background: #ffffff;
+  color: var(--brand-ink);
 }
 
-.logo-text {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-purple));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.sidebar.collapsed .logo-text {
+.ambient {
   display: none;
 }
 
-/* 导航 */
-.sidebar-nav {
-  flex: 1;
-  padding: var(--space-md);
+.ambient-one {
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, #9ec5ff 0%, rgba(158, 197, 255, 0) 72%);
+  top: -130px;
+  right: 8%;
+}
+
+.ambient-two {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, #b0f0ff 0%, rgba(176, 240, 255, 0) 72%);
+  bottom: -220px;
+  left: 22%;
+}
+
+.sidebar {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  overflow-y: auto;
+  gap: 14px;
+  padding: 20px 16px;
+  background: #f2f0ec;
+  border-right: 1px solid #e3dfd8;
+  backdrop-filter: none;
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: #fff;
+  background: linear-gradient(145deg, #30b05f, #22a153);
+  box-shadow: none;
+}
+
+.brand-block h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.brand-block p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #78716c;
+}
+
+.new-chat-btn {
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #171717;
+  box-shadow: none;
+  transition: background-color 0.2s ease;
+}
+
+.new-chat-btn:hover {
+  transform: none;
+  background: #262626;
+}
+
+.plus {
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+.agent-tip {
+  margin: 0;
+  font-size: 12px;
+  color: #78716c;
+  text-align: center;
+}
+
+.agent-tip span {
+  color: #171717;
+  font-weight: 700;
+}
+
+.nav-list {
+  display: grid;
+  gap: 6px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-lg);
-  color: rgba(0, 0, 0, 0.6);
+  gap: 10px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: #3f3f46;
   text-decoration: none;
-  font-size: var(--font-size-base);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.nav-item::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.03), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.5s ease;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 .nav-item:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: rgba(0, 0, 0, 0.9);
-}
-
-.nav-item:hover::before {
-  transform: translateX(100%);
+  background: #ebe7e1;
+  color: #1f2937;
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(139, 92, 246, 0.1));
-  color: #1d1d1f;
-  box-shadow: 0 4px 20px rgba(10, 132, 255, 0.1);
-}
-
-.nav-item.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  background: linear-gradient(180deg, var(--color-accent), var(--color-accent-purple));
-  border-radius: 0 4px 4px 0;
-}
-
-.nav-item svg {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.nav-item:hover svg {
-  transform: scale(1.1);
-}
-
-.sidebar.collapsed .nav-item span {
-  display: none;
-}
-
-.sidebar.collapsed .nav-item {
-  justify-content: center;
-  padding: var(--space-sm);
-}
-
-/* 用户区 */
-.sidebar-footer {
-  padding: var(--space-lg);
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  position: relative;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-purple));
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #e6e2db;
+  color: #1f2937;
   font-weight: 600;
-  font-size: var(--font-size-sm);
-  color: white;
-  flex-shrink: 0;
-  box-shadow: 0 4px 15px rgba(10, 132, 255, 0.3);
-  transition: all 0.3s ease;
 }
 
-.user-avatar:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4);
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-name {
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-}
-
-.user-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
+.dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--color-accent-green);
+  background: #a8a29e;
 }
 
-.sidebar.collapsed .user-details {
-  display: none;
+.nav-item.active .dot {
+  background: #16a34a;
 }
 
-/* 主内容区 */
-.main-content {
+.history-panel {
   flex: 1;
+  min-height: 160px;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  background: #f6f4f0;
+  border: 1px solid #e2ded7;
+  border-radius: 14px;
   overflow: hidden;
-  position: relative;
 }
 
-/* 响应式 */
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    z-index: 100;
-    transform: translateX(-100%);
-  }
-
-  .sidebar:not(.collapsed) {
-    transform: translateX(0);
-  }
-}
-/* 对话列表区域 */
-.conversation-section {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  margin-top: var(--space-md);
-}
-
-.conversation-header {
-  padding: var(--space-md);
-}
-
-.new-chat-btn {
-  width: 100%;
+.history-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: linear-gradient(135deg, var(--color-accent), #059669);
-  border: none;
-  border-radius: var(--radius-lg);
-  color: white;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(16, 163, 127, 0.3);
+  justify-content: space-between;
+  padding: 12px;
+  font-size: 12px;
+  color: #57534e;
+  border-bottom: 1px solid #e8e3db;
 }
 
-.new-chat-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 163, 127, 0.4);
-}
-
-.new-chat-btn:active {
-  transform: scale(0.98);
+.history-header em {
+  font-style: normal;
+  color: #166534;
+  font-weight: 700;
 }
 
 .conversation-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 var(--space-sm);
+  padding: 8px;
 }
 
 .conversation-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  margin-bottom: 6px;
   cursor: pointer;
-  margin-bottom: 4px;
-  transition: all 0.2s ease;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--brand-text);
+  transition: all 0.18s ease;
 }
 
 .conversation-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: #ece8e2;
 }
 
 .conversation-item.active {
-  background: linear-gradient(135deg, rgba(16, 163, 127, 0.08), rgba(16, 163, 127, 0.04));
-  color: #1d1d1f;
+  background: #e7e2da;
+  color: #1f2937;
+  box-shadow: inset 0 0 0 1px #dbd5cb;
 }
 
-.conversation-item.active::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  width: 3px;
-  height: 16px;
-  background: var(--color-accent);
-  border-radius: 0 4px 4px 0;
-}
-
-.item-content {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  flex: 1;
-  min-width: 0;
-  position: relative;
-}
-
-.item-content svg {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.conversation-item.active .item-content svg {
-  opacity: 1;
-  color: var(--color-accent);
-}
-
-.title {
-  font-size: var(--font-size-sm);
-  white-space: nowrap;
+.conversation-title {
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .delete-btn {
   opacity: 0;
-  background: transparent;
   border: none;
-  color: rgba(0, 0, 0, 0.4);
+  background: transparent;
+  color: #78716c;
+  font-size: 12px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
 }
 
 .conversation-item:hover .delete-btn {
@@ -523,14 +395,121 @@ onMounted(() => {
 }
 
 .delete-btn:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
+  color: #d83939;
 }
 
 .empty-conversations {
+  padding: 18px 12px;
   text-align: center;
-  padding: var(--space-xl);
-  color: rgba(0, 0, 0, 0.4);
-  font-size: var(--font-size-sm);
+  color: #78716c;
+  font-size: 12px;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #efebe5;
+  border: 1px solid #e0dbd3;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(145deg, #22c55e, #16a34a);
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.user-status {
+  font-size: 11px;
+  color: #78716c;
+}
+
+.workspace {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px;
+  gap: 0;
+  background: #ffffff;
+}
+
+
+.chat-shell {
+  flex: 1;
+  min-height: 0;
+  border-radius: 12px;
+  border: 1px solid #e8e4dd;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.chat-shell :deep(.chat-window) {
+  background: transparent;
+}
+
+.chat-shell :deep(.chat-header) {
+  background: #faf8f5;
+  border-bottom-color: #ebe7df;
+}
+
+.chat-shell :deep(.input-container) {
+  border-color: #ddd8cf;
+}
+
+.chat-shell :deep(.send-btn) {
+  background: #171717;
+}
+
+.mobile-mask {
+  display: none;
+}
+
+@media (max-width: 1080px) {
+  .neo-page {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 300px;
+    transform: translateX(-102%);
+    transition: transform 0.22s ease;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .mobile-mask {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    z-index: 2;
+  }
+
+  .workspace {
+    padding: 10px;
+  }
+
 }
 </style>

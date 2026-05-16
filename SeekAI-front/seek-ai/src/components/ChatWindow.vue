@@ -1,15 +1,9 @@
-<template>
+﻿<template>
   <div class="chat-window">
     <div class="chat-header">
       <div class="title-info">
         <h3>{{ currentTitle }}</h3>
         <span v-if="currentConversationId" class="id-badge">#{{ currentConversationId }}</span>
-      </div>
-      <div class="actions">
-        <el-button v-if="currentConversationId" link type="danger" plain @click="clearMessages">
-          <el-icon class="el-icon--left"><Delete /></el-icon>
-          Clear History
-        </el-button>
       </div>
     </div>
     
@@ -66,13 +60,25 @@
     
     <div class="input-area" ref="inputAreaRef">
       <div class="input-inner">
+        <div class="composer-toolbar">
+          <div class="toolbar-group">
+            <button type="button" class="toolbar-chip">Deep Think</button>
+            <button type="button" class="toolbar-chip">Tools</button>
+            <span class="agent-chip">{{ currentAgentLabel }}</span>
+          </div>
+          <el-button v-if="currentConversationId" link type="danger" plain @click="clearMessages">
+            <el-icon class="el-icon--left"><Delete /></el-icon>
+            Clear History
+          </el-button>
+        </div>
+
         <div class="input-container" style="position: relative;">
           <el-input
             ref="textareaRef"
             v-model="inputMsg"
             type="textarea"
             :autosize="{ minRows: 1, maxRows: 8 }"
-            placeholder="Send a message to SeekAI... (输入 @ 提及 Agent)"
+            placeholder="有问题，尽管问，Shift + Enter 换行"
             resize="none"
             @keydown.enter.prevent="handleSend"
             @input="handleInputChange"
@@ -80,7 +86,7 @@
             :disabled="!currentConversationId || streaming"
           />
 
-          <!-- @ 提及自动补全列表 -->
+          <!-- @ 鎻愬強鑷姩琛ュ叏鍒楄〃 -->
           <div v-if="showMentionList" class="mention-list" :style="mentionListStyle">
             <div
               v-for="(agent, index) in filteredAgents"
@@ -94,7 +100,7 @@
               <span class="mention-desc">{{ agent.description }}</span>
             </div>
             <div v-if="filteredAgents.length === 0" class="mention-empty">
-              没有匹配的 Agent
+              娌℃湁鍖归厤鐨?Agent
             </div>
           </div>
 
@@ -108,7 +114,7 @@
           </el-button>
         </div>
         <div class="input-tips">
-          Press Enter to send, Shift + Enter for new line. 输入 <span class="tip-highlight">@</span> 提及 Agent
+          Enter 发送，Shift + Enter 换行，输入 <span class="tip-highlight">@</span> 提及 Agent
         </div>
       </div>
     </div>
@@ -140,14 +146,10 @@ import { Cpu, Operation, View, Warning, Promotion, Delete } from '@element-plus/
 import MarkdownIt from 'markdown-it'
 import * as echarts from 'echarts'
 
-// 先初始化 store（必须在 watch 之前）
 const chatStore = useChatStore()
-
-// 使用 shallowRef 避免深度响应式追踪
 const messagesShallow = shallowRef([])
 const streamingShallow = shallowRef(false)
 
-// watch 使用 chatStore（现在已定义）
 watch(() => chatStore.messages, (newVal) => {
   messagesShallow.value = newVal
 }, { immediate: true })
@@ -156,11 +158,11 @@ watch(() => chatStore.streaming, (newVal) => {
   streamingShallow.value = newVal
 }, { immediate: true })
 
-// Markdown 渲染缓存 (使用 shallowRef 避免深度响应式)
+// Markdown 娓叉煋缂撳瓨 (浣跨敤 shallowRef 閬垮厤娣卞害鍝嶅簲寮?
 const messageRenderCache = shallowRef(new Map())
 let isRenderingECharts = false
 
-// 节流辅助函数
+// 鑺傛祦杈呭姪鍑芥暟
 let scrollTimer = null
 let chartTimer = null
 const throttle = (fn, delay) => {
@@ -172,22 +174,21 @@ const throttle = (fn, delay) => {
   }
 }
 
-// 图表实例管理
+// 鍥捐〃瀹炰緥绠＄悊
 const chartInstances = ref(new Map())
 
-// ============ Markdown-it 配置与自定义渲染 ============
+// ============ Markdown-it 閰嶇疆涓庤嚜瀹氫箟娓叉煋 ============
 const md = new MarkdownIt({
   html: true,
   breaks: true,
   linkify: true,
   highlight: function (str, lang) {
-    // 拦截 ECharts 渲染块
     if (lang === 'echarts') {
       const chartId = `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       return `<div class="echarts-container chart-container" id="${chartId}" data-chart-config="${encodeURIComponent(str)}"></div>`
     }
     
-    // 普通代码块处理
+    // 鏅€氫唬鐮佸潡澶勭悊
     const escapeHtml = (unsafe) => {
       return unsafe
         .replace(/&/g, "&amp;")
@@ -213,7 +214,7 @@ const md = new MarkdownIt({
           <div class="code-lang">${displayLang}</div>
           <button class="copy-btn" data-code-id="${codeBlockId}" data-code="${encodeURIComponent(str)}">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            <span>复制</span>
+            <span>澶嶅埗</span>
           </button>
         </div>
         <div class="code-body-wrapper">
@@ -238,15 +239,18 @@ const messages = computed(() => messagesShallow.value)
 const streaming = computed(() => streamingShallow.value)
 const currentAgent = computed(() => chatStore.selectedAgent || 'auto')
 const agents = computed(() => chatStore.agents)
+const currentAgentLabel = computed(() => {
+  if (!currentAgent.value || currentAgent.value === 'auto') return 'Auto'
+  const agent = agents.value.find(item => item.name === currentAgent.value)
+  return agent ? getAgentAlias(agent.name) : currentAgent.value
+})
 
-// @ 提及相关状态
 const textareaRef = ref(null)
 const showMentionList = ref(false)
 const mentionIndex = ref(0)
 const mentionQuery = ref('')
 const mentionListStyle = ref({})
 
-// Agent 别名映射（中文别名 -> 英文名）
 const agentAliases = {
   '爬虫': 'CRAWLER_AGENT',
   'crawler': 'CRAWLER_AGENT',
@@ -275,7 +279,6 @@ const agentAliases = {
   'auto': 'MULTI_STEP_AGENT'
 }
 
-// Agent 中文名/别名显示
 const getAgentAlias = (name) => {
   const aliasMap = {
     'CRAWLER_AGENT': '爬虫',
@@ -291,23 +294,22 @@ const getAgentAlias = (name) => {
   return aliasMap[name] || name
 }
 
-// Agent 表情映射
 const getAgentEmoji = (name) => {
   const emojiMap = {
     'CRAWLER_AGENT': '🕷️',
-    'SEARCH_AGENT': '🔍',
+    'SEARCH_AGENT': '🔎',
     'CHART_AGENT': '📊',
-    'DATA_AGENT': '💾',
+    'DATA_AGENT': '📈',
     'CODE_EXPERT': '💻',
-    'AUTO_CODER_AGENT': '⌨️',
+    'AUTO_CODER_AGENT': '⚙️',
     'DOCUMENT_AGENT': '📄',
     'GENERAL_HELPER': '🤖',
-    'MULTI_STEP_AGENT': '📋'
+    'MULTI_STEP_AGENT': '🧭'
   }
   return emojiMap[name] || '🤖'
 }
 
-// 过滤后的 Agent 列表
+// 杩囨护鍚庣殑 Agent 鍒楄〃
 const filteredAgents = computed(() => {
   if (!mentionQuery.value) return agents.value || []
   const query = mentionQuery.value.toLowerCase()
@@ -319,46 +321,41 @@ const filteredAgents = computed(() => {
   })
 })
 
-// 处理输入变化
+// 澶勭悊杈撳叆鍙樺寲
 const handleInputChange = () => {
   const text = inputMsg.value
   const cursorPos = getCursorPosition()
 
-  // 查找 @ 的位置
   const lastAtIndex = text.lastIndexOf('@', cursorPos - 1)
 
   if (lastAtIndex !== -1) {
-    // 检查 @ 后面是否有空格或其他分隔符
     const textAfterAt = text.slice(lastAtIndex + 1, cursorPos)
     const hasSpace = textAfterAt.includes(' ')
 
     if (!hasSpace) {
-      // 在 @ 后面，显示补全列表
       mentionQuery.value = textAfterAt
       showMentionList.value = true
       mentionIndex.value = 0
 
-      // 计算补全列表位置
       updateMentionListPosition(lastAtIndex)
       return
     }
   }
 
-  // 不在 @ 后面，隐藏列表
   showMentionList.value = false
   mentionQuery.value = ''
 }
 
-// 获取光标位置
+// 鑾峰彇鍏夋爣浣嶇疆
 const getCursorPosition = () => {
   const textarea = textareaRef.value?.textarea
   if (!textarea) return 0
   return textarea.selectionStart
 }
 
-// 更新补全列表位置
+// 鏇存柊琛ュ叏鍒楄〃浣嶇疆
 const updateMentionListPosition = (atIndex) => {
-  // 简单处理：显示在输入框下方
+  // 绠€鍗曞鐞嗭細鏄剧ず鍦ㄨ緭鍏ユ涓嬫柟
   mentionListStyle.value = {
     bottom: '100%',
     left: '0',
@@ -368,7 +365,7 @@ const updateMentionListPosition = (atIndex) => {
   }
 }
 
-// 处理键盘事件
+// 澶勭悊閿洏浜嬩欢
 const handleKeydown = (e) => {
   if (!showMentionList.value) return
 
@@ -386,7 +383,6 @@ const handleKeydown = (e) => {
   } else if (e.key === 'Escape') {
     showMentionList.value = false
   } else if (e.key === 'Backspace') {
-    // 检查是否删除了 @，如果是则关闭列表
     const text = inputMsg.value
     const cursorPos = getCursorPosition()
     const lastAtIndex = text.lastIndexOf('@', cursorPos - 1)
@@ -396,24 +392,24 @@ const handleKeydown = (e) => {
   }
 }
 
-// 选择 Agent
+// 閫夋嫨 Agent
 const selectMentionAgent = (agent) => {
   const text = inputMsg.value
   const cursorPos = getCursorPosition()
   const lastAtIndex = text.lastIndexOf('@', cursorPos - 1)
 
   if (lastAtIndex !== -1) {
-    // 替换 @xxx 为 @AgentName
+    // 鏇挎崲 @xxx 涓?@AgentName
     const before = text.slice(0, lastAtIndex)
     const after = text.slice(cursorPos)
     const alias = getAgentAlias(agent.name)
 
     inputMsg.value = before + '@' + alias + ' ' + after
 
-    // 关闭补全列表
+    // 鍏抽棴琛ュ叏鍒楄〃
     showMentionList.value = false
 
-    // 让输入框重新获取焦点
+    // 璁╄緭鍏ユ閲嶆柊鑾峰彇鐒︾偣
     nextTick(() => {
       const newPos = lastAtIndex + alias.length + 2
       textareaRef.value?.textarea?.setSelectionRange(newPos, newPos)
@@ -427,9 +423,8 @@ const currentTitle = computed(() => {
   return conv?.title || 'Current Chat'
 })
 
-// ============ ECharts 动态渲染逻辑 ============
+// ============ ECharts 鍔ㄦ€佹覆鏌撻€昏緫 ============
 const renderECharts = async () => {
-  // 防抖：避免重复渲染
   if (isRenderingECharts) return
   isRenderingECharts = true
 
@@ -486,18 +481,18 @@ const renderECharts = async () => {
         chart._resizeObserver = resizeObserver
 
       } catch (e) {
-        console.error('ECharts 渲染失败:', e)
-        container.innerHTML = `<div style="color: #ef4444; padding: 20px; text-align: center; background: #fef2f2; border-radius: 8px; border: 1px solid #fee2e2;">📊 图表配置解析失败<br><small>${e.message}</small></div>`
+        console.error('ECharts 娓叉煋澶辫触:', e)
+        container.innerHTML = `<div style="color: #ef4444; padding: 20px; text-align: center; background: #fef2f2; border-radius: 8px; border: 1px solid #fee2e2;">馃搳 鍥捐〃閰嶇疆瑙ｆ瀽澶辫触<br><small>${e.message}</small></div>`
       }
     })
   } catch (e) {
-    console.error('ECharts 渲染错误:', e)
+    console.error('ECharts 娓叉煋閿欒:', e)
   } finally {
     isRenderingECharts = false
   }
 }
 
-// ============ 滚动与观察者逻辑 ============
+// ============ 婊氬姩涓庤瀵熻€呴€昏緫 ============
 const checkIfAtBottom = () => {
   if (!messageListRef.value) return true
   const { scrollTop, scrollHeight, clientHeight } = messageListRef.value
@@ -557,12 +552,12 @@ const initIntersectionObserver = () => {
   })
 }
 
-// ============ 生命周期与监听 ============
+// ============ 鐢熷懡鍛ㄦ湡涓庣洃鍚?============
 watch(() => messages.value.length, () => {
   initIntersectionObserver()
 })
 
-// 复制代码功能（事件委托）
+// 澶嶅埗浠ｇ爜鍔熻兘锛堜簨浠跺鎵橈級
 const handleCopyCode = (e) => {
   const btn = e.target.closest('.copy-btn')
   if (!btn) return
@@ -572,19 +567,19 @@ const handleCopyCode = (e) => {
 
   navigator.clipboard.writeText(codeStr).then(() => {
     const originalHTML = btn.innerHTML
-    btn.innerHTML = '<span class="copied-text">✓ 已复制</span>'
+    btn.innerHTML = '<span class="copied-text">鉁?宸插鍒?/span>'
     btn.classList.add('copied')
     setTimeout(() => {
       btn.innerHTML = originalHTML
       btn.classList.remove('copied')
     }, 2000)
   }).catch(err => {
-    console.error('复制失败', err)
+    console.error('澶嶅埗澶辫触', err)
   })
 }
 
 onMounted(() => {
-  // 添加复制代码事件监听
+  // 娣诲姞澶嶅埗浠ｇ爜浜嬩欢鐩戝惉
   document.addEventListener('click', handleCopyCode)
 
   if (messageListRef.value) {
@@ -599,7 +594,7 @@ onMounted(() => {
     observer.observe(messageListRef.value, {
       childList: true,
       subtree: true
-      // 移除 characterData: true，这会导致严重的性能问题
+      // 绉婚櫎 characterData: true锛岃繖浼氬鑷翠弗閲嶇殑鎬ц兘闂
     })
   }
 
@@ -614,7 +609,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  // 移除复制代码事件监听
+  // 绉婚櫎澶嶅埗浠ｇ爜浜嬩欢鐩戝惉
   document.removeEventListener('click', handleCopyCode)
 
   if (messageListRef.value) {
@@ -631,13 +626,13 @@ onBeforeUnmount(() => {
   chartInstances.value.clear()
 })
 
-// 优化：移除 deep watch，改用 shallow 响应式 + 节流
+// 浼樺寲锛氱Щ闄?deep watch锛屾敼鐢?shallow 鍝嶅簲寮?+ 鑺傛祦
 const handleMessagesChange = throttle(async () => {
   await nextTick()
   if (!isUserScrolling.value && messageListRef.value) {
     messageListRef.value.scrollTop = messageListRef.value.scrollHeight
   }
-  // 延迟渲染 ECharts，避免频繁初始化
+  // 寤惰繜娓叉煋 ECharts锛岄伩鍏嶉绻佸垵濮嬪寲
   if (chartTimer) clearTimeout(chartTimer)
   chartTimer = setTimeout(() => renderECharts(), 150)
 }, 100)
@@ -663,7 +658,7 @@ watch(() => currentConversationId.value, async () => {
   chartInstances.value.clear()
 })
 
-// ============ 发送与处理消息 ============
+// ============ 鍙戦€佷笌澶勭悊娑堟伅 ============
 const handleSend = () => {
   if (!inputMsg.value.trim() || streaming.value) return
   const msg = inputMsg.value
@@ -692,7 +687,6 @@ const clearMessages = () => {
   })
 }
 
-// 保护 Echarts 不受流式渲染标签截断的影响
 const patchMarkdown = (text) => {
   if (!text) return ''
   const echartsBlocks = []
@@ -724,35 +718,35 @@ const formatReActType = (type) => {
     'thought': '思考过程',
     'action': '调用工具',
     'observation': '观察结果',
-    'critique': '自我反思与纠错'
+    'critique': '自我反思'
   }
   return map[type] || type
 }
 </script>
 
 <style scoped>
-/* ==================== 基础布局 ==================== */
+/* ==================== 鍩虹甯冨眬 ==================== */
 .chat-window {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: transparent;
+  background: #ffffff;
   position: relative;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* ==================== 头部 ==================== */
+/* ==================== 澶撮儴 ==================== */
 .chat-header {
-  height: 64px;
+  height: 56px;
   padding: 0 24px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #ece8e2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: #faf8f5;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -782,24 +776,20 @@ const formatReActType = (type) => {
 .id-badge {
   font-family: 'Fira Code', monospace;
   font-size: 11px;
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.15);
+  color: #57534e;
+  background: #f5f2ec;
+  border: 1px solid #e7e1d8;
   padding: 2px 8px;
   border-radius: 6px;
   font-weight: 500;
   flex-shrink: 0;
 }
 
-.actions {
-  flex-shrink: 0;
-}
-
-/* ==================== 消息列表与条目 ==================== */
+/* ==================== 娑堟伅鍒楄〃涓庢潯鐩?==================== */
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 0;
+  padding: 20px 0;
   scroll-behavior: smooth;
 }
 
@@ -811,7 +801,7 @@ const formatReActType = (type) => {
   color: rgba(0, 0, 0, 0.4);
 }
 
-/* 空状态玻璃卡片 */
+/* 绌虹姸鎬佺幓鐠冨崱鐗?*/
 .empty-state :deep(.el-empty__description) {
   color: rgba(0, 0, 0, 0.5);
 }
@@ -824,12 +814,12 @@ const formatReActType = (type) => {
 }
 
 .message-item.assistant {
-  background: rgba(0, 0, 0, 0.02);
-  border-top: 1px solid rgba(0, 0, 0, 0.04);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  background: #f8f6f2;
+  border-top: 1px solid #efebe5;
+  border-bottom: 1px solid #efebe5;
 }
 
-/* 消息项入场动画 */
+/* 娑堟伅椤瑰叆鍦哄姩鐢?*/
 .message-item {
   animation: messageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
@@ -895,7 +885,7 @@ const formatReActType = (type) => {
   border: 1px solid rgba(5, 150, 105, 0.12);
 }
 
-/* ==================== 思考链路 (ReAct Blocks) ==================== */
+/* ==================== 鎬濊€冮摼璺?(ReAct Blocks) ==================== */
 .react-blocks {
   display: flex;
   flex-direction: column;
@@ -932,7 +922,7 @@ const formatReActType = (type) => {
   color: #4b5563;
 }
 
-/* 思考块颜色定制 */
+/* 鎬濊€冨潡棰滆壊瀹氬埗 */
 .react-thought { border-color: #e5e7eb; }
 .react-thought .react-block-header { color: #6b7280; }
 
@@ -948,7 +938,7 @@ const formatReActType = (type) => {
 .react-critique .react-block-header { color: #d97706; background-color: #fffbeb; border-bottom-color: #fef3c7;}
 .react-critique .react-block-content { background-color: #fff; color: #92400e; }
 
-/* ==================== Markdown 通用排版 ==================== */
+/* ==================== Markdown 閫氱敤鎺掔増 ==================== */
 .markdown-body {
   font-size: 15.5px;
   line-height: 1.75;
@@ -997,7 +987,7 @@ const formatReActType = (type) => {
   border-radius: 0 8px 8px 0;
 }
 
-/* ==================== 表格渲染样式 ==================== */
+/* ==================== 琛ㄦ牸娓叉煋鏍峰紡 ==================== */
 .markdown-body :deep(table) {
   width: 100%;
   margin: 20px 0;
@@ -1024,9 +1014,9 @@ const formatReActType = (type) => {
   background: rgba(0, 0, 0, 0.02);
 }
 
-/* ==================== 完美衔接的代码块样式 ==================== */
+/* ==================== 瀹岀編琛旀帴鐨勪唬鐮佸潡鏍峰紡 ==================== */
 .markdown-body :deep(.custom-code-block) {
-  /* 容器统一控制圆角和边框，解决脱节问题 */
+  /* 瀹瑰櫒缁熶竴鎺у埗鍦嗚鍜岃竟妗嗭紝瑙ｅ喅鑴辫妭闂 */
   background-color: #f6f8fa;
   border-radius: 8px;
   overflow: hidden;
@@ -1043,13 +1033,13 @@ const formatReActType = (type) => {
   justify-content: space-between;
   background-color: #f0f2f5;
   padding: 10px 16px;
-  border-bottom: 1px solid #d0d7de; /* 明确的分割线 */
+  border-bottom: 1px solid #d0d7de; /* 鏄庣‘鐨勫垎鍓茬嚎 */
 }
 
 .markdown-body :deep(.mac-dots) {
   display: flex;
   gap: 6px;
-  width: 60px; /* 固定宽度以居中语言标签 */
+  width: 60px; /* 鍥哄畾瀹藉害浠ュ眳涓瑷€鏍囩 */
 }
 
 .markdown-body :deep(.dot) {
@@ -1089,7 +1079,7 @@ const formatReActType = (type) => {
 .markdown-body :deep(.copy-btn.copied) { color: #27c93f; }
 
 .markdown-body :deep(.code-body-wrapper) {
-  /* 包装层确保背景色和滚动表现一致 */
+  /* 鍖呰灞傜‘淇濊儗鏅壊鍜屾粴鍔ㄨ〃鐜颁竴鑷?*/
   background-color: #f6f8fa;
   width: 100%;
   overflow-x: auto;
@@ -1111,7 +1101,7 @@ const formatReActType = (type) => {
   background: transparent;
 }
 
-/* ==================== 内联代码 (与代码块严格区分) ==================== */
+/* ==================== 鍐呰仈浠ｇ爜 (涓庝唬鐮佸潡涓ユ牸鍖哄垎) ==================== */
 .markdown-body :deep(:not(pre) > code) {
   font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
   background: rgba(139, 92, 246, 0.1);
@@ -1123,13 +1113,13 @@ const formatReActType = (type) => {
   word-break: break-word;
 }
 
-/* ==================== ECharts 容器样式 ==================== */
+/* ==================== ECharts 瀹瑰櫒鏍峰紡 ==================== */
 .markdown-body :deep(.echarts-container) {
   transition: all 0.3s ease;
   min-width: 300px !important;
   min-height: 300px !important;
   width: 100% !important;
-  height: 350px !important; /* 适当增加高度显得更大气 */
+  height: 350px !important; /* 閫傚綋澧炲姞楂樺害鏄惧緱鏇村ぇ姘?*/
   box-sizing: border-box;
   margin: 20px 0;
   border-radius: 12px;
@@ -1139,9 +1129,9 @@ const formatReActType = (type) => {
   padding: 10px;
 }
 
-/* ==================== 动画与杂项 ==================== */
+/* ==================== 鍔ㄧ敾涓庢潅椤?==================== */
 .markdown-body.streaming :deep(*:last-child)::after {
-  content: '▋';
+  content: '|';
   display: inline-block;
   margin-left: 4px;
   vertical-align: baseline;
@@ -1174,13 +1164,14 @@ const formatReActType = (type) => {
   40% { transform: scale(1); opacity: 1; }
 }
 
-/* ==================== 输入区域 ==================== */
+/* ==================== 杈撳叆鍖哄煙 ==================== */
 .input-area {
-  padding: 20px 24px 36px;
-  background: linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, transparent 100%);
+  padding: 12px 24px 20px;
+  background: #ffffff;
   position: relative;
   display: flex;
   justify-content: center;
+  border-top: 1px solid #f0ece6;
 }
 
 .input-inner {
@@ -1188,29 +1179,66 @@ const formatReActType = (type) => {
   max-width: 800px;
 }
 
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar-chip {
+  border: 1px solid #ddd8cf;
+  background: #f8f6f2;
+  color: #44403c;
+  border-radius: 999px;
+  font-size: 13px;
+  height: 30px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.toolbar-chip:hover {
+  background: #f1ede7;
+}
+
+.agent-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #d9d4ca;
+  background: #ffffff;
+  color: #57534e;
+  font-size: 13px;
+}
+
 .input-container {
   position: relative;
   display: flex;
   align-items: flex-end;
-  background: rgba(0, 0, 0, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #ddd8cf;
   border-radius: 24px;
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: none;
   padding: 12px 20px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input-container:focus-within {
-  background: rgba(0, 0, 0, 0.02);
-  border-color: rgba(16, 163, 127, 0.4);
-  box-shadow:
-    0 0 0 3px rgba(16, 163, 127, 0.15),
-    0 20px 40px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  border-color: #bfb8ad;
+  box-shadow: 0 0 0 3px rgba(87, 83, 78, 0.08);
 }
 
 .input-container :deep(.el-textarea__inner) {
@@ -1238,16 +1266,16 @@ const formatReActType = (type) => {
   align-items: center;
   justify-content: center;
   border-radius: 14px;
-  background: linear-gradient(135deg, #10a37f, #059669);
+  background: #171717;
   border-color: transparent;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(16, 163, 127, 0.3);
+  box-shadow: none;
 }
 
 .send-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #0d9668, #047857);
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 25px rgba(16, 163, 127, 0.4);
+  background: #262626;
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: none;
 }
 .send-btn:active {
   transform: translateY(0) scale(0.98);
@@ -1266,14 +1294,14 @@ const formatReActType = (type) => {
 }
 
 .tip-highlight {
-  background: rgba(16, 163, 127, 0.1);
-  color: #059669;
+  background: #ede7de;
+  color: #44403c;
   padding: 1px 4px;
   border-radius: 4px;
   font-weight: 500;
 }
 
-/* ==================== @ 提及自动补全列表 ==================== */
+/* ==================== @ 鎻愬強鑷姩琛ュ叏鍒楄〃 ==================== */
 .mention-list {
   position: absolute;
   background: white;
@@ -1302,7 +1330,7 @@ const formatReActType = (type) => {
 
 .mention-item:hover,
 .mention-item.active {
-  background-color: #f0fdf4;
+  background-color: #f5f2ec;
 }
 
 .mention-icon {
@@ -1333,26 +1361,9 @@ const formatReActType = (type) => {
   font-size: 13px;
 }
 
-/* ==================== 侧边小地图 ==================== */
+/* ==================== 渚ц竟灏忓湴鍥?==================== */
 .chat-minimap {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 50;
-  padding: 16px 8px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  transition: all 0.3s ease;
+  display: none;
 }
 
 .minimap-item {
@@ -1372,7 +1383,7 @@ const formatReActType = (type) => {
 .minimap-item.user { background: linear-gradient(90deg, #6366f1, #8b5cf6); align-self: flex-end; }
 .minimap-item.assistant { background: linear-gradient(90deg, #10a37f, #34d399); align-self: flex-start; }
 
-/* 响应式调整 */
+/* 鍝嶅簲寮忚皟鏁?*/
 @media (max-width: 1024px) {
   .message-item, .input-area {
     padding-left: 16px;
@@ -1381,3 +1392,4 @@ const formatReActType = (type) => {
   .chat-minimap { display: none; }
 }
 </style>
+
