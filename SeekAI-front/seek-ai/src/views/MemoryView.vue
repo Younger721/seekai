@@ -29,51 +29,6 @@
           <span class="dot"></span>
           对话
         </router-link>
-        <router-link
-          to="/skills"
-          class="nav-item"
-          :class="{ active: route.path === '/skills' }"
-          @click="closeMobileSidebar"
-        >
-          <span class="dot"></span>
-          技能
-        </router-link>
-        <router-link
-          to="/memory"
-          class="nav-item"
-          :class="{ active: route.path === '/memory' }"
-          @click="closeMobileSidebar"
-        >
-          <span class="dot"></span>
-          记忆
-        </router-link>
-        <router-link
-          to="/browser"
-          class="nav-item"
-          :class="{ active: route.path === '/browser' }"
-          @click="closeMobileSidebar"
-        >
-          <span class="dot"></span>
-          浏览器
-        </router-link>
-        <router-link
-          to="/tools"
-          class="nav-item"
-          :class="{ active: route.path === '/tools' }"
-          @click="closeMobileSidebar"
-        >
-          <span class="dot"></span>
-          工具
-        </router-link>
-        <router-link
-          to="/security"
-          class="nav-item"
-          :class="{ active: route.path === '/security' }"
-          @click="closeMobileSidebar"
-        >
-          <span class="dot"></span>
-          安全
-        </router-link>
       </nav>
 
       <section class="history-panel">
@@ -398,7 +353,7 @@ const formatConfidence = (confidence) => {
 }
 
 onMounted(() => {
-  chatStore.fetchConversations()
+  chatStore.initConversationContext()
   chatStore.fetchAgents()
   fetchData()
 })

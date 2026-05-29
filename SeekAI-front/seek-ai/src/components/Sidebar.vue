@@ -79,7 +79,7 @@ const hasMore = computed(() => {
 })
 
 onMounted(() => {
-  chatStore.fetchConversations()
+  chatStore.initConversationContext()
   chatStore.fetchAgents()
 
   // 面试亮点 4：IntersectionObserver 实现无限滚动优化长列表性能

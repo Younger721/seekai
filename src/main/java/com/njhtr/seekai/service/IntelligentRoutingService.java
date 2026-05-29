@@ -1,5 +1,6 @@
 package com.njhtr.seekai.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.njhtr.seekai.agent.Agent;
 import com.njhtr.seekai.agent.AgentRegistry;
 import com.njhtr.seekai.dto.AgentRequest;
@@ -7,192 +8,287 @@ import com.njhtr.seekai.dto.AgentResponse;
 import com.njhtr.seekai.dto.MessageDTO;
 import com.njhtr.seekai.dto.RoutingDecision;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
- * 智能路由服务 - 使用 AI 自动选择合适的 Agent
+ * Hybrid router: choose obvious agents locally, and call the model only when the
+ * request is genuinely ambiguous.
  */
 @Slf4j
 @Service
 public class IntelligentRoutingService {
-    
+
+    private static final String GENERAL_AGENT = "GENERAL_HELPER";
+    private static final String CODE_AGENT = "CODE_EXPERT";
+    private static final String DOCUMENT_AGENT = "DOCUMENT_ASSISTANT";
+    private static final String SEARCH_AGENT = "SEARCH_EXPERT";
+    private static final String DATA_AGENT = "DATA_EXPERT";
+    private static final String AUTO_CODER_AGENT = "AUTO_CODER_AGENT";
+
+    private static final String ROUTER_AGENT_LIST = """
+        GENERAL_HELPER: greetings, casual chat, general questions.
+        CODE_EXPERT: code explanation, debugging, code review, programming questions.
+        DOCUMENT_ASSISTANT: document writing, summarization, document Q&A.
+        SEARCH_EXPERT: web search, latest/current information, online lookup.
+        DATA_EXPERT: SQL, database query, chart, data/business analysis.
+        AUTO_CODER_AGENT: create or modify project files, implement features, multi-step coding work.
+        """;
+
     private final ChatClient routerClient;
     private final AgentRegistry agentRegistry;
-    private final double confidenceThreshold = 0.5; // 置信度阈值
-    
-    public IntelligentRoutingService(ChatClient.Builder builder, 
-                                    AgentRegistry agentRegistry) {
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final double confidenceThreshold = 0.5;
+
+    public IntelligentRoutingService(ChatClient.Builder builder, AgentRegistry agentRegistry) {
         this.agentRegistry = agentRegistry;
-        
-        // 配置专门用于路由决策的 ChatClient（独立实例，不共享记忆）
         this.routerClient = builder.build();
     }
-    
-    /**
-     * 智能路由到最合适的 Agent
-     */
+
     public Agent routeToIntelligentAgent(String message) {
-        log.info("🧠 开始智能路由分析：{}", message.substring(0, Math.min(50, message.length())));
-        
-        // 使用 AI 进行路由决策
+        String preview = preview(message);
+        log.info("Start intelligent routing: {}", preview);
+
+        String localAgentName = localRoute(message);
+        if (localAgentName != null) {
+            log.info("Local route selected: {}", localAgentName);
+            return requireAgent(localAgentName);
+        }
+
         RoutingDecision decision = analyzeIntent(message);
-        
-        log.info("✅ 路由决策结果：Agent={}, 置信度={}, 理由={}", 
-            decision.getSelectedAgent(), 
-            decision.getConfidence(), 
-            decision.getReason());
-        
-        // 如果置信度低于阈值，降级到通用助手
-        if (decision.getConfidence() < confidenceThreshold) {
-            log.warn("⚠️ 置信度过低 ({})，降级到通用助手", decision.getConfidence());
-            return agentRegistry.getAgent("GENERAL_HELPER");
+        log.info("Model route selected: agent={}, confidence={}, reason={}",
+            decision.getSelectedAgent(), decision.getConfidence(), decision.getReason());
+
+        if (decision.getConfidence() == null || decision.getConfidence() < confidenceThreshold) {
+            log.warn("Routing confidence is low ({}), fallback to {}", decision.getConfidence(), GENERAL_AGENT);
+            return requireAgent(GENERAL_AGENT);
         }
-        
-        // 获取目标 Agent
+
         Agent selectedAgent = agentRegistry.getAgent(decision.getSelectedAgent());
-        
         if (selectedAgent == null) {
-            log.error("❌ 选中的 Agent 不存在：{}，使用通用助手", decision.getSelectedAgent());
-            return agentRegistry.getAgent("GENERAL_HELPER");
+            throw new IllegalStateException("Router selected an unregistered agent: " + decision.getSelectedAgent());
         }
-        
+
         return selectedAgent;
     }
-    
-    /**
-     * 使用 AI 分析用户意图
-     */
+
+    private String localRoute(String message) {
+        String text = normalize(message);
+        if (text.isBlank()) {
+            return GENERAL_AGENT;
+        }
+
+        if (isSearchRequest(text)) {
+            return SEARCH_AGENT;
+        }
+        if (isAutoCoderRequest(text)) {
+            return AUTO_CODER_AGENT;
+        }
+        if (isCodeRequest(text)) {
+            return CODE_AGENT;
+        }
+        if (isDataRequest(text)) {
+            return DATA_AGENT;
+        }
+        if (isDocumentRequest(text)) {
+            return DOCUMENT_AGENT;
+        }
+        if (isSimpleGeneralChat(text)) {
+            return GENERAL_AGENT;
+        }
+        if (!looksLikeSpecialAgentTask(text)) {
+            return GENERAL_AGENT;
+        }
+
+        return null;
+    }
+
+    private boolean isSimpleGeneralChat(String text) {
+        if (text.length() <= 24 && containsAny(text,
+            "\u4f60\u597d", "\u60a8\u597d", "\u55e8", "\u54c8\u55bd", "\u65e9\u4e0a\u597d", "\u665a\u4e0a\u597d",
+            "hello", "hi", "hey", "\u4f60\u662f\u8c01", "\u4f60\u80fd\u505a\u4ec0\u4e48")) {
+            return true;
+        }
+        return containsAny(text,
+            "\u4ec0\u4e48\u662f", "\u4e3a\u4ec0\u4e48", "\u600e\u4e48\u7406\u89e3", "\u89e3\u91ca\u4e00\u4e0b",
+            "\u8bb2\u4e00\u4e0b", "\u804a\u804a", "\u95ee\u4e2a\u95ee\u9898", "what is", "why", "explain");
+    }
+
+    private boolean isSearchRequest(String text) {
+        return containsAny(text,
+            "\u641c\u7d22", "\u8054\u7f51", "\u4e0a\u7f51\u67e5", "\u67e5\u4e00\u4e0b", "\u6700\u65b0", "\u4eca\u5929",
+            "\u65b0\u95fb", "\u70ed\u70b9", "\u7f51\u9875", "\u7f51\u5740", "search", "google", "bing", "latest", "news");
+    }
+
+    private boolean isAutoCoderRequest(String text) {
+        boolean codingObject = containsAny(text,
+            "\u9879\u76ee", "\u4ee3\u7801\u5e93", "\u5de5\u7a0b", "\u6587\u4ef6", "\u63a5\u53e3", "\u529f\u80fd",
+            "\u7ec4\u4ef6", "\u914d\u7f6e", "project", "repo", "codebase", "file", "feature");
+        boolean codingAction = containsAny(text,
+            "\u5b9e\u73b0", "\u4fee\u6539", "\u4fee\u590d", "\u6539\u4e00\u4e0b", "\u5199\u4e00\u4e2a", "\u52a0\u4e00\u4e2a",
+            "\u5220\u9664", "\u91cd\u6784", "\u7f16\u8bd1", "\u8fd0\u884c", "\u5206\u6790\u8fd9\u4e2a\u9879\u76ee",
+            "\u9879\u76ee\u7ed3\u6784", "implement", "modify", "fix", "refactor", "compile", "run");
+        return codingObject && codingAction;
+    }
+
+    private boolean isCodeRequest(String text) {
+        return containsAny(text,
+            "\u4ee3\u7801", "\u62a5\u9519", "\u5f02\u5e38", "\u8c03\u8bd5", "\u4ee3\u7801\u8bc4\u5ba1", "\u89e3\u91ca\u8fd9\u6bb5",
+            "\u7b97\u6cd5", "java", "spring", "vue", "javascript", "typescript", "python", "bug", "debug",
+            "exception", "stack trace", "code review");
+    }
+
+    private boolean isDataRequest(String text) {
+        return containsAny(text,
+            "sql", "\u6570\u636e\u5e93", "\u8868", "\u56fe\u8868", "\u7edf\u8ba1", "\u6307\u6807", "\u6570\u636e\u5206\u6790",
+            "\u67e5\u8be2\u6570\u636e", "mysql", "postgres", "chart", "database", "analytics");
+    }
+
+    private boolean isDocumentRequest(String text) {
+        return containsAny(text,
+            "\u6587\u6863", "\u603b\u7ed3", "\u6458\u8981", "\u5199\u4f5c", "\u5927\u7eb2", "\u62a5\u544a", "\u5408\u540c",
+            "\u7b80\u5386", "document", "summary", "summarize", "outline", "report");
+    }
+
+    private boolean looksLikeSpecialAgentTask(String text) {
+        return containsAny(text,
+            "\u5e2e\u6211", "\u5206\u6790", "\u5904\u7406", "\u751f\u6210", "\u521b\u5efa", "\u5236\u4f5c", "\u8bbe\u8ba1",
+            "\u67e5\u8be2", "\u6574\u7406", "\u5bfc\u51fa", "\u8bfb\u53d6", "\u6253\u5f00", "\u6293\u53d6",
+            "analyze", "generate", "create", "design", "query", "export", "read", "open", "crawl");
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String normalize(String message) {
+        return message == null ? "" : message.trim().toLowerCase(Locale.ROOT);
+    }
+
     private RoutingDecision analyzeIntent(String message) {
-        String agentsDescription = buildAgentsDescription();
-        
+        String promptText = """
+            You are a router for a multi-agent AI system.
+            Choose exactly one registered agent for the user request.
+
+            Agents:
+            %s
+
+            User request:
+            %s
+
+            Return strict JSON only:
+            {"selectedAgent":"AGENT_NAME","confidence":0.0,"reason":"short reason"}
+            """.formatted(ROUTER_AGENT_LIST, message == null ? "" : message);
+
+        long start = System.currentTimeMillis();
         try {
-            // 获取 AI 原始响应
-            String promptText = """
-                请作为一个智能调度中心，分析用户的请求应该由哪个领域的专家处理：
-                
-                用户请求：%s
-                
-                可用专家列表及能力边界：
-                %s
-                
-                路由核心准则：
-                1. 意图区分：注意区分“查询信息”和“执行动作”。例如，“查询 GitHub”是搜索行为，应该给 SEARCH_EXPERT；而“打开浏览器访问 GitHub”或“阅读某个URL网页内容”是执行物理动作或深度阅读，必须交给 GENERAL_HELPER（它拥有 SystemTools 可以抓取网页和控制电脑）。
-                2. 项目构建与全自动编程：任何涉及到“搭建项目”、“写一个XX放到桌面”、“写完整代码并保存”的请求，必须交给 AUTO_CODER_AGENT。它具备连续执行复杂构建任务的能力。
-                3. 文件操作：简单的“读文件”、“写文件”、“保存到本地”操作，可以交给 GENERAL_HELPER 或 AUTO_CODER_AGENT。
-                4. 网页深度阅读：如果用户提供了一个具体的 http 链接并要求“阅读”、“分析”或“总结”该网页内容，交给 SEARCH_EXPERT 或 GENERAL_HELPER。
-                5. 代码分析：纯粹的口头代码解释、答疑、代码片段分析交给 CODE_EXPERT。
-                6. 商业智能与数据分析：如果用户要求“统计数据”、“画图表”、“查询数据库里的数据”、“分析销售趋势/用户增长等业务数据”，**必须**交给 DATA_EXPERT，它拥有直连数据库执行 NL2SQL 和生成图表的能力。
-                
-                返回 JSON 格式，必须使用以下字段名：
-                {
-                    "selectedAgent": "AGENT_NAME",
-                    "confidence": 0.0-1.0,
-                    "reason": "请详细解释选择该专家而不是其他专家的理由"
-                }
-                """.formatted(message, agentsDescription);
-            
             String rawResponse = routerClient.prompt()
                 .user(promptText)
                 .call()
                 .content();
-            
-            // 提取 JSON 内容（移除 Markdown 代码块标记）
+
+            long elapsed = System.currentTimeMillis() - start;
+            log.info("Router model returned in {} ms. Raw response: {}", elapsed, rawResponse);
+
             String jsonContent = extractJson(rawResponse);
-            
-            // 手动解析为 RoutingDecision
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            RoutingDecision decision = mapper.readValue(jsonContent, RoutingDecision.class);
-            
+            RoutingDecision decision = objectMapper.readValue(jsonContent, RoutingDecision.class);
+            validateDecision(decision);
             return decision;
-            
         } catch (Exception e) {
-            log.error("❌ 路由分析失败，使用默认 Agent", e);
-            // 失败时返回通用助手
-            return RoutingDecision.builder()
-                .selectedAgent("GENERAL_HELPER")
-                .confidence(0.0)
-                .reason("路由分析失败，使用默认 Agent")
-                .build();
+            long elapsed = System.currentTimeMillis() - start;
+            log.error("Routing model call failed after {} ms", elapsed, e);
+            throw new IllegalStateException("Intelligent routing model call failed: " + e.getMessage(), e);
         }
     }
-    
-    /**
-     * 从响应中提取 JSON 内容（移除 ```json ... ``` 标记）
-     */
+
+    private void validateDecision(RoutingDecision decision) {
+        if (decision == null || decision.getSelectedAgent() == null || decision.getSelectedAgent().isBlank()) {
+            throw new IllegalStateException("Routing model did not return selectedAgent");
+        }
+        if (!agentRegistry.hasAgent(decision.getSelectedAgent())) {
+            throw new IllegalStateException("Routing model returned an unregistered agent: " + decision.getSelectedAgent());
+        }
+        if (decision.getConfidence() == null) {
+            decision.setConfidence(0.0);
+        }
+        if (decision.getReason() == null) {
+            decision.setReason("");
+        }
+    }
+
     private String extractJson(String response) {
-        // 查找 JSON 开始和结束位置
+        if (response == null) {
+            throw new IllegalStateException("Model returned empty response");
+        }
+
         int start = response.indexOf('{');
         int end = response.lastIndexOf('}');
-        
         if (start >= 0 && end > start) {
             return response.substring(start, end + 1);
         }
-        
-        // 如果没有找到 JSON，返回原始响应（可能会失败）
-        return response.trim();
+
+        throw new IllegalStateException("Model did not return JSON: " + response);
     }
-    
-    /**
-     * 构建 Agent 描述文本
-     */
-    private String buildAgentsDescription() {
-        List<Agent> agents = agentRegistry.getAllAgents();
-        return agents.stream()
-            .map(agent -> String.format("- %s: %s", 
-                agent.getName(), agent.getDescription()))
-            .collect(java.util.stream.Collectors.joining("\n"));
-    }
-    
-    /**
-     * 处理请求（自动路由）
-     */
+
     public AgentResponse processRequest(String message, String conversationId, List<MessageDTO> historyMessages) {
-        // 1. 智能路由
         Agent targetAgent = routeToIntelligentAgent(message);
-        
-        log.info("🎯 已路由到 Agent: {}", targetAgent.getName());
-        
-        // 2. 执行 Agent
+        log.info("Routed to agent: {}", targetAgent.getName());
+
         AgentRequest request = AgentRequest.builder()
             .message(message)
             .conversationId(conversationId)
             .historyMessages(historyMessages)
             .build();
-        
+
         return targetAgent.chat(request);
     }
-    
-    /**
-     * 流式处理（自动路由）
-     */
+
     public Flux<String> processStream(String message, String conversationId, List<MessageDTO> historyMessages) {
-        Agent targetAgent = routeToIntelligentAgent(message);
-        
-        log.info("🌊 流式路由到 Agent: {}", targetAgent.getName());
-        
-        AgentRequest request = AgentRequest.builder()
-            .message(message)
-            .conversationId(conversationId)
-            .historyMessages(historyMessages)
-            .build();
-        
-        return targetAgent.stream(request);
+        try {
+            Agent targetAgent = routeToIntelligentAgent(message);
+            log.info("Streaming routed to agent: {}", targetAgent.getName());
+
+            AgentRequest request = AgentRequest.builder()
+                .message(message)
+                .conversationId(conversationId)
+                .historyMessages(historyMessages)
+                .build();
+
+            return targetAgent.stream(request)
+                .onErrorResume(error -> {
+                    log.error("Agent stream failed", error);
+                    return Flux.just("\n\nModel call failed: " + error.getMessage());
+                });
+        } catch (Exception e) {
+            log.error("Streaming route failed", e);
+            return Flux.just("Model call failed: " + e.getMessage());
+        }
     }
-    
-    /**
-     * 获取所有可用的 Agent 信息
-     */
+
     public List<MultiAgentService.AgentInfo> getAvailableAgents() {
         return agentRegistry.getAllAgents().stream()
-            .map(agent -> new MultiAgentService.AgentInfo(
-                agent.getName(), 
-                agent.getDescription()))
+            .map(agent -> new MultiAgentService.AgentInfo(agent.getName(), agent.getDescription()))
             .toList();
+    }
+
+    private Agent requireAgent(String agentName) {
+        Agent agent = agentRegistry.getAgent(agentName);
+        if (agent == null) {
+            throw new IllegalStateException("Required agent is not registered: " + agentName);
+        }
+        return agent;
+    }
+
+    private String preview(String message) {
+        return message == null ? "" : message.substring(0, Math.min(50, message.length()));
     }
 }

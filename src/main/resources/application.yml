@@ -22,15 +22,18 @@ spring:
           jdbc:
             initialize-schema: never
     openai:
-      base-url: http://localhost:11434
+      base-url: https://token-plan-cn.xiaomimimo.com
 #      base-url: https://api.siliconflow.cn/
-      api-key: sk-ohkbngheylpvfolsoywwjlpzwbprltekqmqmuwqifdqkxvfu
+      api-key: tp-c4qdmep1m7tphvifmixh3ms1e8m5surrroewjc7m2y77jfkl
       chat:
+        completions-path: /v1/chat/completions
         options:
-          model: qwen2.5-coder:7b
+          model: mimo-v2.5
 #          model: Pro/moonshotai/Kimi-K2.5
           temperature: 0.7
       embedding:
+        base-url: http://localhost:11434
+        api-key: ollama
         options:
           model: nomic-embed-text
       image:
@@ -47,6 +50,8 @@ spring:
             response-format: mp3
             model: Wan-AI/Wan2.1-I2V-14B-720P-Turbo
             speed: 1.0
+    retry:
+      max-attempts: 1
 
 # MyBatis 配置
 mybatis:

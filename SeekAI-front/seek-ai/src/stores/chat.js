@@ -3,12 +3,15 @@ import request from '../api/request'
 import { ElMessage } from 'element-plus'
 
 const REACT_PREFIX_REGEX = /(?:^|\n)(Thought|Action|Observation|Critique|Final Answer):\s*/g
+const LAST_CONVERSATION_STORAGE_KEY = 'seekai_last_conversation_id'
+let initConversationPromise = null
 
 function normalizeConversation(item) {
   return {
     ...item,
     id: item.id || item.conversationId,
-    title: item.title || item.preview || 'New Chat'
+    title: item.title || item.preview || 'New Chat',
+    persisted: true
   }
 }
 
@@ -77,6 +80,43 @@ export const useChatStore = defineStore('chat', {
   }),
 
   actions: {
+    rememberCurrentConversation(id) {
+      if (!id) return
+      try {
+        localStorage.setItem(LAST_CONVERSATION_STORAGE_KEY, id)
+      } catch (error) {
+        console.warn('Failed to persist last conversation id:', error)
+      }
+    },
+
+    restoreLastConversationId() {
+      try {
+        return localStorage.getItem(LAST_CONVERSATION_STORAGE_KEY)
+      } catch (error) {
+        console.warn('Failed to restore last conversation id:', error)
+        return null
+      }
+    },
+
+    clearLastConversationId(id) {
+      try {
+        const current = localStorage.getItem(LAST_CONVERSATION_STORAGE_KEY)
+        if (!id || current === id) {
+          localStorage.removeItem(LAST_CONVERSATION_STORAGE_KEY)
+        }
+      } catch (error) {
+        console.warn('Failed to clear last conversation id:', error)
+      }
+    },
+
+    findConversation(id) {
+      return this.conversations.find(item => item.id === id) || null
+    },
+
+    isDraftConversation(id) {
+      return this.findConversation(id)?.persisted === false
+    },
+
     async fetchAgents() {
       try {
         const data = await request.get('/agent/smart/agents')
@@ -97,7 +137,11 @@ export const useChatStore = defineStore('chat', {
     async fetchConversations() {
       try {
         const data = await request.get('/conversations')
-        this.conversations = (data || []).map(normalizeConversation)
+        const remoteConversations = (data || []).map(normalizeConversation)
+        const remoteIds = new Set(remoteConversations.map(item => item.id))
+        const draftConversations = this.conversations.filter(item => item.persisted === false && !remoteIds.has(item.id))
+
+        this.conversations = [...draftConversations, ...remoteConversations]
       } catch (error) {
         console.error('Failed to fetch conversations:', error)
         ElMessage.error('获取会话列表失败')
@@ -105,29 +149,71 @@ export const useChatStore = defineStore('chat', {
     },
 
     async createConversation() {
-      try {
-        const data = await request.post('/conversations')
-        const newConversation = {
-          id: data.id || data.conversationId,
-          title: data.title || 'New Chat',
-          createdAt: data.createdAt
+      const conversationId = globalThis.crypto?.randomUUID?.() || `draft-${Date.now()}`
+      const newConversation = {
+        id: conversationId,
+        title: 'New Chat',
+        createdAt: new Date().toISOString(),
+        persisted: false
+      }
+
+      this.conversations = [newConversation, ...this.conversations.filter(item => item.id !== conversationId)]
+      this.currentConversationId = conversationId
+      this.rememberCurrentConversation(conversationId)
+      this.messages = []
+      return conversationId
+    },
+
+    async initConversationContext(options = {}) {
+      const { force = false } = options
+
+      if (!force && initConversationPromise) {
+        return initConversationPromise
+      }
+
+      const run = async () => {
+        await this.fetchConversations()
+
+        const currentExists = this.currentConversationId && this.findConversation(this.currentConversationId)
+        if (currentExists) {
+          this.rememberCurrentConversation(this.currentConversationId)
+          return this.currentConversationId
         }
-        this.conversations.unshift(newConversation)
-        this.currentConversationId = newConversation.id
-        this.messages = []
-        ElMessage.success('创建成功')
-        return newConversation.id
-      } catch (error) {
-        console.error('Failed to create conversation:', error)
-        ElMessage.error('创建会话失败')
-        return null
+
+        const lastConversationId = this.restoreLastConversationId()
+        const fallbackId = this.conversations[0]?.id || null
+        const targetConversationId = this.findConversation(lastConversationId)?.id || fallbackId
+
+        if (targetConversationId) {
+          await this.fetchConversationDetail(targetConversationId)
+          return targetConversationId
+        }
+
+        return this.createConversation()
+      }
+
+      initConversationPromise = run()
+      try {
+        return await initConversationPromise
+      } finally {
+        initConversationPromise = null
       }
     },
 
     async fetchConversationDetail(id) {
+      if (!id) return
+
+      if (this.isDraftConversation(id)) {
+        this.currentConversationId = id
+        this.rememberCurrentConversation(id)
+        this.messages = []
+        return
+      }
+
       try {
         this.loading = true
         this.currentConversationId = id
+        this.rememberCurrentConversation(id)
         const data = await request.get(`/conversations/${id}`)
 
         const rawMessages = data.messages || []
@@ -159,12 +245,38 @@ export const useChatStore = defineStore('chat', {
     },
 
     async deleteConversation(id) {
+      if (!id) return
+      const wasCurrent = this.currentConversationId === id
+
+      if (this.isDraftConversation(id)) {
+        this.conversations = this.conversations.filter(c => c.id !== id)
+        this.clearLastConversationId(id)
+        if (wasCurrent) {
+          this.currentConversationId = null
+          this.messages = []
+          const fallbackId = this.conversations[0]?.id
+          if (fallbackId) {
+            await this.fetchConversationDetail(fallbackId)
+          } else {
+            await this.createConversation()
+          }
+        }
+        return
+      }
+
       try {
         await request.delete(`/conversations/${id}`)
         this.conversations = this.conversations.filter(c => c.id !== id)
-        if (this.currentConversationId === id) {
+        this.clearLastConversationId(id)
+        if (wasCurrent) {
           this.currentConversationId = null
           this.messages = []
+          const fallbackId = this.conversations[0]?.id
+          if (fallbackId) {
+            await this.fetchConversationDetail(fallbackId)
+          } else {
+            await this.createConversation()
+          }
         }
         ElMessage.success('删除成功')
       } catch (error) {
@@ -174,6 +286,11 @@ export const useChatStore = defineStore('chat', {
     },
 
     async clearConversationMessages(id) {
+      if (this.isDraftConversation(id)) {
+        this.messages = []
+        return
+      }
+
       try {
         await request.delete(`/conversations/${id}/messages`)
         this.messages = []
@@ -275,6 +392,11 @@ export const useChatStore = defineStore('chat', {
 
         if (buffer.trim()) {
           applyChunk(buffer.replace(/^data:\s?/, '').replace(/\\n/g, '\n').replace(/\\"/g, '"'))
+        }
+
+        const currentConversation = this.findConversation(conversationId)
+        if (currentConversation) {
+          currentConversation.persisted = true
         }
       } catch (error) {
         console.error('Streaming error:', error)

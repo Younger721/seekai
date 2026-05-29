@@ -119,19 +119,19 @@
       </div>
     </div>
     
-    <div class="chat-minimap" v-if="messages.length > 0">
+    <div class="chat-minimap" v-if="userMinimapItems.length > 0">
       <el-tooltip
-        v-for="(msg, index) in messages"
-        :key="'minimap-' + index"
-        :content="getMinimapPreview(msg.content)"
+        v-for="item in userMinimapItems"
+        :key="'minimap-' + item.index"
+        :content="getMinimapPreview(item.message.content)"
         placement="left"
         :show-after="100"
         effect="dark"
       >
         <div 
           class="minimap-item"
-          :class="[msg.type === 'assistant' ? 'assistant' : 'user', { active: activeMessageIndex === index }]"
-          @click="scrollToMessage(index)"
+          :class="{ active: activeUserMessageIndex === item.index }"
+          @click="scrollToMessage(item.index)"
         ></div>
       </el-tooltip>
     </div>
@@ -237,6 +237,29 @@ let intersectionObserver = null
 const currentConversationId = computed(() => chatStore.currentConversationId)
 const messages = computed(() => messagesShallow.value)
 const streaming = computed(() => streamingShallow.value)
+const userMinimapItems = computed(() => {
+  return messages.value
+    .map((message, index) => ({ message, index }))
+    .filter(item => item.message.type === 'user')
+})
+const activeUserMessageIndex = computed(() => {
+  if (activeMessageIndex.value < 0) {
+    return userMinimapItems.value[0]?.index ?? -1
+  }
+
+  let nearestUserIndex = -1
+  for (const item of userMinimapItems.value) {
+    if (item.index <= activeMessageIndex.value) {
+      nearestUserIndex = item.index
+    } else {
+      break
+    }
+  }
+
+  return nearestUserIndex !== -1
+    ? nearestUserIndex
+    : userMinimapItems.value[0]?.index ?? -1
+})
 const currentAgent = computed(() => chatStore.selectedAgent || 'auto')
 const agents = computed(() => chatStore.agents)
 const currentAgentLabel = computed(() => {
@@ -788,9 +811,31 @@ const formatReActType = (type) => {
 /* ==================== 娑堟伅鍒楄〃涓庢潯鐩?==================== */
 .message-list {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow-y: scroll;
   padding: 20px 0;
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #bcb5aa #f4f1eb;
+}
+
+.message-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.message-list::-webkit-scrollbar-track {
+  background: #f4f1eb;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+  background: #bcb5aa;
+  border-radius: 999px;
+  border: 2px solid #f4f1eb;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover {
+  background: #9f9688;
 }
 
 .empty-state {
@@ -808,7 +853,7 @@ const formatReActType = (type) => {
 
 .message-item {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 32px 24px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1167,7 +1212,7 @@ const formatReActType = (type) => {
 /* ==================== 杈撳叆鍖哄煙 ==================== */
 .input-area {
   padding: 12px 24px 20px;
-  background: #ffffff;
+  background: #f7f4ee;
   position: relative;
   display: flex;
   justify-content: center;
@@ -1216,7 +1261,7 @@ const formatReActType = (type) => {
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid #d9d4ca;
-  background: #ffffff;
+  background: #faf7f2;
   color: #57534e;
   font-size: 13px;
 }
@@ -1225,7 +1270,7 @@ const formatReActType = (type) => {
   position: relative;
   display: flex;
   align-items: flex-end;
-  background: #ffffff;
+  background: #f9f6f1;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: 1px solid #ddd8cf;
@@ -1236,7 +1281,7 @@ const formatReActType = (type) => {
 }
 
 .input-container:focus-within {
-  background: #ffffff;
+  background: #fcfaf6;
   border-color: #bfb8ad;
   box-shadow: 0 0 0 3px rgba(87, 83, 78, 0.08);
 }
@@ -1363,25 +1408,57 @@ const formatReActType = (type) => {
 
 /* ==================== 渚ц竟灏忓湴鍥?==================== */
 .chat-minimap {
-  display: none;
+  position: absolute;
+  right: 18px;
+  top: 88px;
+  bottom: 150px;
+  z-index: 18;
+  width: 82px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  padding: 10px 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(234, 88, 12, 0.45) transparent;
+}
+
+.chat-minimap::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-minimap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-minimap::-webkit-scrollbar-thumb {
+  background: rgba(234, 88, 12, 0.45);
+  border-radius: 999px;
 }
 
 .minimap-item {
-  width: 18px;
-  height: 3px;
-  border-radius: 6px;
+  width: 54px;
+  height: 11px;
+  flex: 0 0 11px;
+  border: 1px solid rgba(251, 146, 60, 0.62);
+  border-radius: 3px;
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  box-shadow: 0 1px 3px rgba(194, 65, 12, 0.18);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0.5;
+  opacity: 0.72;
+  transition: width 0.18s ease, opacity 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .minimap-item:hover,
 .minimap-item.active {
   opacity: 1;
-  transform: scaleX(1.5);
+  width: 64px;
+  background: linear-gradient(90deg, #f97316, #ea580c);
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.2), 0 4px 10px rgba(194, 65, 12, 0.24);
 }
-.minimap-item.user { background: linear-gradient(90deg, #6366f1, #8b5cf6); align-self: flex-end; }
-.minimap-item.assistant { background: linear-gradient(90deg, #10a37f, #34d399); align-self: flex-start; }
 
 /* 鍝嶅簲寮忚皟鏁?*/
 @media (max-width: 1024px) {
